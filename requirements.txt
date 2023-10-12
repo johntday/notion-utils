@@ -1,0 +1,9 @@
+requests~=2.31.0
+langchain~=0.0.306
+openai~=0.28.1
+python-dotenv~=1.0.0
+pypdf~=3.16.2
+pdfminer.six
+tiktoken~=0.5.1
+pandas~=2.1.1
+tenacity~=8.2.3
