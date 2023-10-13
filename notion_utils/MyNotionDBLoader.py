@@ -126,21 +126,19 @@ class MyNotionDBLoader(BaseLoader):
         return page_ids
 
     def duplicates(
-            self, query_dict: Dict[str, Any] = None
+            self,
+            query_dict: Dict[str, Any] = None
     ) -> List[tuple[str, str]]:
         """Get duplicate pages"""
         if query_dict is None:
             query_dict = {}
         pages = self._retrieve_pages(query_dict)
 
-        # tuple of ("notion unique id", "my unique id")
         list_items = [(page["id"], page["properties"]["id"]["title"][0]["plain_text"]) for page in pages]
         from collections import Counter
         second_items = [t[1] for t in list_items]
         duplicates = [item for item, count in Counter(second_items).items() if count > 1]
         duplicate_tuples = [t for t in list_items if t[1] in duplicates]
-        print(f"duplicates: {duplicate_tuples}") if self.verbose else None
-
         return duplicate_tuples
 
     def load_page(self, page_id: str) -> List[Document]:
