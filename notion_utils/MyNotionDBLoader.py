@@ -12,20 +12,25 @@ NOTION_BASE_URL = "https://api.notion.com/v1"
 DATABASE_URL = NOTION_BASE_URL + "/databases/{database_id}/query"
 PAGE_URL = NOTION_BASE_URL + "/pages/{page_id}"
 BLOCK_URL = NOTION_BASE_URL + "/blocks/{block_id}/children"
-TIMEOUT = 10000
-WAIT = 1
-RETRY_COUNT = 5
-METADATA_FILTER = ['id', 'title', 'tags', 'version', 'source id', 'published', 'source', 'myid']
-
-
-def metadata_filter(pair: tuple, metadatafilter: list[str] = None) -> bool:
-    if metadatafilter is None:
-        metadatafilter = METADATA_FILTER
-    key, value = pair
-    if key in metadatafilter:
-        return True
-    else:
-        return False
+QUERY_DICT = {
+    "filter": {
+        "and": [
+            {
+                "property": "Pub",
+                "checkbox": {
+                    "equals": True
+                }
+            },
+            {
+                "property": "Status",
+                "select": {
+                    "equals": "Reviewed"
+                }
+            }
+        ]
+    },
+    'page_size': 100
+}
 
 
 def _get_pdf_content(url_str: str, page_id: str, verbose: bool) -> List[Document]:
@@ -45,10 +50,18 @@ class MyNotionDBLoader(BaseLoader):
         database_id (str): Notion database id.
     """
 
-    def __init__(self, integration_token: str, database_id: str, verbose: bool, config=None) -> None:
+    def __init__(self,
+                 integration_token: str,
+                 database_id: str,
+                 verbose: bool,
+                 timeout: int = 10000,
+                 wait: int = 1,
+                 retry_count: int = 5,
+                 metadata_filter_list: list[str] = ['id', 'title'],
+                 validate_missing_content: bool = True,
+                 validate_missing_metadata: list[str] = ['source'],
+                 ) -> None:
         """Initialize with parameters."""
-        if config is None:
-            config = {'timeout': TIMEOUT, 'wait': WAIT, 'retry_count': RETRY_COUNT}
         if not integration_token:
             raise ValueError("integration_token must be provided")
         if not database_id:
@@ -62,39 +75,25 @@ class MyNotionDBLoader(BaseLoader):
             "Content-Type": "application/json",
             "Notion-Version": "2022-06-28",
         }
+        self.timeout = timeout
+        self.wait = wait
+        self.retry_count = retry_count
+        self.metadata_filter_list = metadata_filter_list
+        self.validate_missing_content = validate_missing_content
+        self.validate_missing_metadata = validate_missing_metadata
 
-    def load(self) -> List[Document]:
+    def load(self, query_dict: Dict[str, Any] = QUERY_DICT) -> List[Document]:
         """Load documents from the Notion database.
         Returns:
             List[Document]: List of documents.
         """
-        page_ids = self._retrieve_page_ids()
+        page_ids = self._retrieve_page_ids(query_dict)
         return list(itertools.chain.from_iterable(self.load_page(page_id) for page_id in page_ids))
 
     def _retrieve_pages(
-            self, query_dict: Dict[str, Any] = None
+            self, query_dict: Dict[str, Any] = QUERY_DICT
     ) -> List[Dict[str, Any]]:
         """Get all the pages from a Notion database."""
-        if query_dict is None:
-            query_dict = {
-                "filter": {
-                    "and": [
-                        {
-                            "property": "Pub",
-                            "checkbox": {
-                                "equals": True
-                            }
-                        },
-                        {
-                            "property": "Status",
-                            "select": {
-                                "equals": "Reviewed"
-                            }
-                        }
-                    ]
-                },
-                'page_size': 100
-            }
         pages: List[Dict[str, Any]] = []
 
         while True:
@@ -113,9 +112,8 @@ class MyNotionDBLoader(BaseLoader):
 
         return pages
 
-
     def _retrieve_page_ids(
-            self, query_dict: Dict[str, Any] = None
+            self, query_dict: Dict[str, Any] = QUERY_DICT
     ) -> List[str]:
         """Get page ids"""
         pages = self._retrieve_pages(query_dict)
@@ -127,11 +125,9 @@ class MyNotionDBLoader(BaseLoader):
 
     def duplicates(
             self,
-            query_dict: Dict[str, Any] = None
+            query_dict: Dict[str, Any] = {}
     ) -> List[tuple[str, str]]:
         """Get duplicate pages"""
-        if query_dict is None:
-            query_dict = {}
         pages = self._retrieve_pages(query_dict)
 
         list_items = [(page["id"], page["properties"]["id"]["title"][0]["plain_text"]) for page in pages]
@@ -190,6 +186,18 @@ class MyNotionDBLoader(BaseLoader):
                 value = (
                     prop_data["url"]
                 )
+            elif prop_type == "number":
+                value = (
+                    prop_data["number"]
+                )
+            elif prop_type == "created_time":
+                value = (
+                    prop_data["created_time"]
+                )
+            elif prop_type == "formula":
+                value = (
+                    prop_data["formula"]
+                )
             else:
                 print(f"Unknown prop_type: {prop_type} for Notion page id: {page_id}")
                 value = None
@@ -200,18 +208,20 @@ class MyNotionDBLoader(BaseLoader):
         page_content = self._load_blocks(block_id=page_id)
 
         """ validate """
-        if not page_content:
-            raise ValueError(f"No content found for page_id: '{page_id}', title: '{metadata['title']}'")
-        if not metadata["source"]:
-            raise ValueError(
-                f"source: '{metadata['source']} not found for page_id: '{page_id}', title: '{metadata['title']}'")
+        if not page_content and self.validate_missing_content:
+            raise ValueError(f"No content found for page_id: '{page_id}', metadata: '{metadata}'")
+        if self.validate_missing_metadata:
+            for missing_metadata in self.validate_missing_metadata:
+                if missing_metadata not in metadata:
+                    raise ValueError(
+                        f"Missing metadata: '{missing_metadata}' for page_id: '{page_id}', metadata: '{metadata}'")
 
         """ check status """
-        if metadata["status"] in ["Archived", "Indexed"]:
+        if 'status' in metadata and metadata["status"] in ["Archived", "Indexed"]:
             return []
 
         """ filter metadata """
-        metadata_filtered = dict(filter(metadata_filter, metadata.items()))
+        metadata_filtered = {k: v for k, v in metadata.items() if any(x == k for x in self.metadata_filter_list)}
 
         if is_pdf:
             print(f"Loading PDF '{metadata}'\n")
@@ -219,7 +229,7 @@ class MyNotionDBLoader(BaseLoader):
             docs = _get_pdf_content(page_content, page_id, verbose=self.verbose)
             return [Document(page_content=doc.page_content, metadata=metadata_filtered) for doc in docs]
         else:
-            print(f"Loading Notion Page '{metadata}'\n")
+            print(f"Loading Notion Page '{metadata_filtered}'\n")
 
         return [Document(page_content=page_content, metadata=metadata_filtered)]
 
@@ -265,9 +275,8 @@ class MyNotionDBLoader(BaseLoader):
         """ Make a request to the Notion API.
         Include retry logic and rate limit handling. """
         # https://scrapeops.io/python-web-scraping-playbook/python-requests-retry-failed-requests/
-        for i in range(RETRY_COUNT):
-            if WAIT is not None:
-                time.sleep(i * WAIT + 1)
+        for i in range(self.retry_count):
+            time.sleep(i * self.wait + 1)
 
             try:
                 response = requests.request(
@@ -275,7 +284,7 @@ class MyNotionDBLoader(BaseLoader):
                     url,
                     headers=self.headers,
                     json=query_dict,
-                    timeout=TIMEOUT,
+                    timeout=self.timeout,
                 )
                 # response.raise_for_status()
                 if response.status_code in [429, 500, 502, 503, 504]:
@@ -285,4 +294,4 @@ class MyNotionDBLoader(BaseLoader):
             # except requests.exceptions.ConnectionError:
             except:
                 continue
-        raise ValueError(f"Failed to get response from Notion API after {RETRY_COUNT} retries")
+        raise ValueError(f"Failed to get response from Notion API after {self.retry_count} retries")
