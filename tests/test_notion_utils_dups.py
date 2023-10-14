@@ -5,17 +5,23 @@ from notion_utils.MyNotionDBLoader import MyNotionDBLoader
 from dotenv import load_dotenv
 load_dotenv()
 
+NOTION_MOVIE_DATABASE_ID1 = os.getenv("NOTION_MOVIE_DATABASE_ID1")
+NOTION_SERIES_DATABASE_ID2 = os.getenv("NOTION_SERIES_DATABASE_ID2")
 databases = [
-    ('movies', "47f5bc1a6b6242b68d048a199a17b19a", "id"),
-    ('series', "bb5dac327c664f8ea6a7ce4b5e3bc1a0", "id"),
+    ('movies', NOTION_MOVIE_DATABASE_ID1, "id"),
+    ('series', NOTION_SERIES_DATABASE_ID2, "id"),
 ]
 notion_token = os.getenv("NOTION_TOKEN")
 
 # loop over all databases
 for db_name, db_id, uniq_col_name in databases:
-    print(f"Checking duplicates for database: {db_name}")
-    notion = MyNotionDBLoader(integration_token=notion_token, database_id=db_id, verbose=True)
-    dups = notion.duplicates()
+    print(f"Checking duplicates for database: {db_name} on column: {uniq_col_name}")
+    notion = MyNotionDBLoader(
+        integration_token=notion_token,
+        database_id=db_id,
+        verbose=True,
+    )
+    dups = notion.duplicates(query_dict={})
     pprint.pprint(dups)
     print()
     print()
