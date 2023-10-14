@@ -33,9 +33,11 @@ QUERY_DICT = {
 }
 
 
-def _get_pdf_content(url_str: str, page_id: str, verbose: bool) -> List[Document]:
+def _get_pdf_content(url_str: str,
+                     page_id: str,
+                     verbose: bool
+                     ) -> List[Document]:
     if url_str.startswith("http"):
-        # loader = PyPDFLoader(url_str)
         loader = MyPyPDFLoader(url_str, verbose=verbose)
         pages = loader.load()
         return pages
@@ -48,6 +50,13 @@ class MyNotionDBLoader(BaseLoader):
     Args:
         integration_token (str): Notion integration token.
         database_id (str): Notion database id.
+        verbose (bool): Whether to print debug messages.
+        timeout (int): Timeout for requests to Notion API.
+        wait (int): Wait time between retries.
+        retry_count (int): Number of retries.
+        metadata_filter_list (list[str]): List of metadata to keep.
+        validate_missing_content (bool): Whether to validate missing content.
+        validate_missing_metadata (list[str]): List of metadata to validate.
     """
 
     def __init__(self,
@@ -82,16 +91,23 @@ class MyNotionDBLoader(BaseLoader):
         self.validate_missing_content = validate_missing_content
         self.validate_missing_metadata = validate_missing_metadata
 
-    def load(self, query_dict: Dict[str, Any] = QUERY_DICT) -> List[Document]:
+    def load(self,
+             query_dict: Dict[str, Any] = QUERY_DICT
+             ) -> List[Document]:
         """Load documents from the Notion database.
+        Args:
+            query_dict (Dict[str, Any]): Query dict for Notion API.
         Returns:
             List[Document]: List of documents.
         """
-        page_ids = self._retrieve_page_ids(query_dict)
-        return list(itertools.chain.from_iterable(self.load_page(page_id) for page_id in page_ids))
+        page_summaries = self._retrieve_page_summaries(query_dict)
+        print(f"Found {len(page_summaries)} pages in Notion database {self.database_id}\n")
+        return list(itertools.chain.from_iterable(self.load_page(page_summary) for page_summary in page_summaries))
 
-    def _retrieve_pages(
-            self, query_dict: Dict[str, Any] = QUERY_DICT
+
+    def _retrieve_page_summaries(
+            self,
+            query_dict: Dict[str, Any] = QUERY_DICT
     ) -> List[Dict[str, Any]]:
         """Get all the pages from a Notion database."""
         pages: List[Dict[str, Any]] = []
@@ -112,16 +128,17 @@ class MyNotionDBLoader(BaseLoader):
 
         return pages
 
-    def _retrieve_page_ids(
-            self, query_dict: Dict[str, Any] = QUERY_DICT
-    ) -> List[str]:
-        """Get page ids"""
-        pages = self._retrieve_pages(query_dict)
-
-        page_ids = [page["id"] for page in pages]
-        print(f"Found {len(page_ids)} pages in Notion database {self.database_id}\n")
-
-        return page_ids
+    # def _retrieve_page_ids(
+    #         self,
+    #         query_dict: Dict[str, Any] = QUERY_DICT
+    # ) -> List[str]:
+    #     """Get page ids"""
+    #     pages = self._retrieve_pages(query_dict)
+    #
+    #     page_ids = [page["id"] for page in pages]
+    #     print(f"Found {len(page_ids)} pages in Notion database {self.database_id}\n")
+    #
+    #     return page_ids
 
     def duplicates(
             self,
@@ -137,15 +154,18 @@ class MyNotionDBLoader(BaseLoader):
         duplicate_tuples = [t for t in list_items if t[1] in duplicates]
         return duplicate_tuples
 
-    def load_page(self, page_id: str) -> List[Document]:
+    def load_page(self,
+                  page_summary: Dict[str, Any]
+                  ) -> List[Document]:
         """Read a page."""
         is_pdf = False
-        data = self._request(PAGE_URL.format(page_id=page_id))
+        page_id = page_summary["id"]
+        # data = self._request(PAGE_URL.format(page_id=page_id))
 
         # load properties as metadata
         metadata: Dict[str, Any] = {}
 
-        for prop_name, prop_data in data["properties"].items():
+        for prop_name, prop_data in page_summary["properties"].items():
             prop_type = prop_data["type"]
 
             if prop_type == "rich_text":
@@ -233,7 +253,10 @@ class MyNotionDBLoader(BaseLoader):
 
         return [Document(page_content=page_content, metadata=metadata_filtered)]
 
-    def _load_blocks(self, block_id: str, num_tabs: int = 0) -> str:
+    def _load_blocks(self,
+                     block_id: str,
+                     num_tabs: int = 0
+                     ) -> str:
         """Read a block and its children."""
         result_lines_arr: List[str] = []
         cur_block_id: str = block_id
@@ -270,7 +293,10 @@ class MyNotionDBLoader(BaseLoader):
         return "\n".join(result_lines_arr)
 
     def _request(
-            self, url: str, method: str = "GET", query_dict: Dict[str, Any] = {}
+            self,
+            url: str,
+            method: str = "GET",
+            query_dict: Dict[str, Any] = {}
     ) -> Any:
         """ Make a request to the Notion API.
         Include retry logic and rate limit handling. """
