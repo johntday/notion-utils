@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 NOTION_MOVIE_DATABASE_ID1 = os.getenv("NOTION_MOVIE_DATABASE_ID1")
-NOTION_SERIES_DATABASE_ID2 = os.getenv("NOTION_SERIES_DATABASE_ID2")
-
 notion_token = os.getenv("NOTION_TOKEN")
 
 notion = MyNotionDBLoader(

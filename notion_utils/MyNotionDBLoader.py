@@ -145,7 +145,7 @@ class MyNotionDBLoader(BaseLoader):
             query_dict: Dict[str, Any] = {}
     ) -> List[tuple[str, str]]:
         """Get duplicate pages"""
-        pages = self._retrieve_pages(query_dict)
+        pages = self._retrieve_page_summaries(query_dict)
 
         list_items = [(page["id"], page["properties"]["id"]["title"][0]["plain_text"]) for page in pages]
         from collections import Counter
