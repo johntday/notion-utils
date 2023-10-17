@@ -44,6 +44,73 @@ def _get_pdf_content(url_str: str,
     raise ValueError(f"Invalid URL of pdf: '{url_str}' at page_id: '{page_id}'")
 
 
+def _read_metadata(page_id: str,
+                   page_summary: Dict[str, Any],
+                   metadata: Dict[str, Any]
+                   ):
+    """Reading metadata from Notion page summary."""
+    for prop_name, prop_data in page_summary["properties"].items():
+        prop_type = prop_data["type"]
+
+        if prop_type == "rich_text":
+            value = (
+                prop_data["rich_text"][0]["plain_text"]
+                if prop_data["rich_text"]
+                else None
+            )
+        elif prop_type == "title":
+            value = (
+                prop_data["title"][0]["plain_text"] if prop_data["title"] else None
+            )
+        elif prop_type == "multi_select":
+            value = (
+                [item["name"] for item in prop_data["multi_select"]]
+                if prop_data["multi_select"]
+                else []
+            )
+        elif prop_type == "select":
+            value = (
+                prop_data["select"]["name"] if prop_data["select"] else None
+            )
+        elif prop_type == "unique_id":
+            value = (
+                prop_data["unique_id"]["number"] if prop_data["unique_id"] else None
+            )
+        elif prop_type == "date":
+            value = (
+                prop_data["date"]["start"] if prop_data["date"] else None
+            )
+        elif prop_type == "checkbox":
+            value = (
+                prop_data["checkbox"]
+            )
+            if prop_name.lower() == "pdf" and value is True:
+                is_pdf = True
+        elif prop_type == "url":
+            value = (
+                prop_data["url"]
+            )
+        elif prop_type == "number":
+            value = (
+                prop_data["number"]
+            )
+        elif prop_type == "created_time":
+            value = (
+                prop_data["created_time"]
+            )
+        elif prop_type == "formula":
+            value = (
+                prop_data["formula"]
+            )
+        else:
+            print(f"Unknown prop_type: {prop_type} for Notion page id: {page_id}")
+            value = None
+
+        metadata[prop_name.lower()] = value
+
+    metadata["id"] = page_id
+
+
 class MyNotionDBLoader(BaseLoader):
     """Notion DB Loader.
     Reads content from pages within a Noton Database.
@@ -104,7 +171,6 @@ class MyNotionDBLoader(BaseLoader):
         print(f"Found {len(page_summaries)} pages in Notion database {self.database_id}\n")
         return list(itertools.chain.from_iterable(self.load_page(page_summary) for page_summary in page_summaries))
 
-
     def _retrieve_page_summaries(
             self,
             query_dict: Dict[str, Any] = QUERY_DICT
@@ -160,71 +226,14 @@ class MyNotionDBLoader(BaseLoader):
         """Read a page."""
         is_pdf = False
         page_id = page_summary["id"]
-        # data = self._request(PAGE_URL.format(page_id=page_id))
 
         # load properties as metadata
         metadata: Dict[str, Any] = {}
 
-        for prop_name, prop_data in page_summary["properties"].items():
-            prop_type = prop_data["type"]
+        """ extract metadata """
+        _read_metadata(page_id, page_summary, metadata)
 
-            if prop_type == "rich_text":
-                value = (
-                    prop_data["rich_text"][0]["plain_text"]
-                    if prop_data["rich_text"]
-                    else None
-                )
-            elif prop_type == "title":
-                value = (
-                    prop_data["title"][0]["plain_text"] if prop_data["title"] else None
-                )
-            elif prop_type == "multi_select":
-                value = (
-                    [item["name"] for item in prop_data["multi_select"]]
-                    if prop_data["multi_select"]
-                    else []
-                )
-            elif prop_type == "select":
-                value = (
-                    prop_data["select"]["name"] if prop_data["select"] else None
-                )
-            elif prop_type == "unique_id":
-                value = (
-                    prop_data["unique_id"]["number"] if prop_data["unique_id"] else None
-                )
-            elif prop_type == "date":
-                value = (
-                    prop_data["date"]["start"] if prop_data["date"] else None
-                )
-            elif prop_type == "checkbox":
-                value = (
-                    prop_data["checkbox"]
-                )
-                if prop_name.lower() == "pdf" and value is True:
-                    is_pdf = True
-            elif prop_type == "url":
-                value = (
-                    prop_data["url"]
-                )
-            elif prop_type == "number":
-                value = (
-                    prop_data["number"]
-                )
-            elif prop_type == "created_time":
-                value = (
-                    prop_data["created_time"]
-                )
-            elif prop_type == "formula":
-                value = (
-                    prop_data["formula"]
-                )
-            else:
-                print(f"Unknown prop_type: {prop_type} for Notion page id: {page_id}")
-                value = None
-
-            metadata[prop_name.lower()] = value
-
-        metadata["id"] = page_id
+        """ load all blocks of content """
         page_content = self._load_blocks(block_id=page_id)
 
         """ validate """
@@ -244,6 +253,7 @@ class MyNotionDBLoader(BaseLoader):
         metadata_filtered = {k: v for k, v in metadata.items() if any(x == k for x in self.metadata_filter_list)}
 
         if is_pdf:
+            """ get notion url to pdf and extract content """
             print(f"Loading PDF '{metadata}'\n")
             print(f"page_content: {page_content}\n") if self.verbose else None
             docs = _get_pdf_content(page_content, page_id, verbose=self.verbose)

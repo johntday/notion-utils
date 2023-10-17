@@ -12,7 +12,7 @@ notion = MyNotionDBLoader(
     integration_token=notion_token,
     database_id=NOTION_MOVIE_DATABASE_ID1,
     verbose=True,
-    metadata_filter_list=['title', 'plot'],
+    metadata_filter_list=['title', 'year', 'plot'],
     validate_missing_content=False,
     validate_missing_metadata=['title', 'genres'],
 )
