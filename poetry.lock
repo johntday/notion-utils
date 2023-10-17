@@ -625,13 +625,13 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.0.314"
+version = "0.0.316"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = ">=3.8.1,<4.0"
 files = [
-    {file = "langchain-0.0.314-py3-none-any.whl", hash = "sha256:b799d4086086ca8f952d5f7b9dc3ebb3cf77b1957d657ee91739cd1689d71a5c"},
-    {file = "langchain-0.0.314.tar.gz", hash = "sha256:96dac382b79a88ee7ccc53aadc2818fd064475f229fde189483fee15558405c8"},
+    {file = "langchain-0.0.316-py3-none-any.whl", hash = "sha256:997d2ecdaf481517c90dcea86f93b98327546c357ac8f581f06d7d782a2eda2d"},
+    {file = "langchain-0.0.316.tar.gz", hash = "sha256:732c958d41e22a5bb55f8c0cb70914793f083d175739d476e5cbbc7715703153"},
 ]
 
 [package.dependencies]
@@ -665,13 +665,13 @@ text-helpers = ["chardet (>=5.1.0,<6.0.0)"]
 
 [[package]]
 name = "langsmith"
-version = "0.0.43"
+version = "0.0.44"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
 python-versions = ">=3.8.1,<4.0"
 files = [
-    {file = "langsmith-0.0.43-py3-none-any.whl", hash = "sha256:27854bebdae6a35c88e1c1172e6abba27592287b70511aca2a953a59fade0e87"},
-    {file = "langsmith-0.0.43.tar.gz", hash = "sha256:f7705f13eb8ce3b8eb16c4d2b2760c62cfb9a3b3ab6aa0728afa84d26b2a6e55"},
+    {file = "langsmith-0.0.44-py3-none-any.whl", hash = "sha256:5e7e5b45360ce89a2d5d6066a3b9fdd31b1f874a0cf19b1666c9792fecef0a1b"},
+    {file = "langsmith-0.0.44.tar.gz", hash = "sha256:74a262ba23a958ca1a4863d5386c151be462e40ccfcb8b39d0a5d8c9eaa40164"},
 ]
 
 [package.dependencies]
@@ -1565,13 +1565,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.0.6"
+version = "2.0.7"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "urllib3-2.0.6-py3-none-any.whl", hash = "sha256:7a7c7003b000adf9e7ca2a377c9688bbc54ed41b985789ed576570342a375cd2"},
-    {file = "urllib3-2.0.6.tar.gz", hash = "sha256:b19e1a85d206b56d7df1d5e683df4a7725252a964e3993648dd0fb5a1c157564"},
+    {file = "urllib3-2.0.7-py3-none-any.whl", hash = "sha256:fdb6d215c776278489906c2f8916e6e7d4f5a9b602ccbcfdf7f016fc8da0596e"},
+    {file = "urllib3-2.0.7.tar.gz", hash = "sha256:c97dfde1f7bd43a71c8d2a58e369e9b2bf692d1334ea9f9cae55add7d0dd0f84"},
 ]
 
 [package.extras]
@@ -1670,4 +1670,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">3.9,<3.13"
-content-hash = "075f53559704bc5c2fe74d5b8f5c0e60cde4d6439b2a4addec0233c83f9a0366"
+content-hash = "bd756968557a14915948516f188345802e828633231060046a457f17b4233dcf"
