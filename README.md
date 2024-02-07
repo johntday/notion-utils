@@ -6,3 +6,9 @@
 Provide Python Notion utilties for use with 
 - [OpenAI](https://openai.com/blog/openai-api/) for text generation and embeddings
 - [Notion](https://developers.notion.com/) for fetching content and metadata from Notion database
+
+## Setup
+```bash
+cp .env.example .env
+# add your own OpenAI, Notion and Qdrant credentials to .env
+```
