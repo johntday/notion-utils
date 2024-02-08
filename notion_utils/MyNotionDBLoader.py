@@ -159,7 +159,8 @@ class MyNotionDBLoader(BaseLoader):
         self.validate_missing_metadata = validate_missing_metadata
 
     def load(self,
-             query_dict: Dict[str, Any] = QUERY_DICT
+             query_dict: Dict[str, Any] = QUERY_DICT,
+             is_test_only: bool = False
              ) -> List[Document]:
         """Load documents from the Notion database.
         Args:
@@ -169,6 +170,8 @@ class MyNotionDBLoader(BaseLoader):
         """
         page_summaries = self._retrieve_page_summaries(query_dict)
         print(f"Found {len(page_summaries)} pages in Notion database {self.database_id}\n")
+        if is_test_only:
+            return []
         return list(itertools.chain.from_iterable(self.load_page(page_summary) for page_summary in page_summaries))
 
     def _retrieve_page_summaries(

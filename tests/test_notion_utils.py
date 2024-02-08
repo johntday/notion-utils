@@ -5,15 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-NOTION_MOVIE_DATABASE_ID1 = os.getenv("NOTION_MOVIE_DATABASE_ID1")
-notion_token = os.getenv("NOTION_TOKEN")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 
 notion = MyNotionDBLoader(
-    integration_token=notion_token,
-    database_id=NOTION_MOVIE_DATABASE_ID1,
+    integration_token=NOTION_TOKEN,
+    database_id=NOTION_DATABASE_ID,
     verbose=True,
-    metadata_filter_list=['title', 'year', 'plot'],
+    metadata_filter_list=[],
     validate_missing_content=False,
-    validate_missing_metadata=['title', 'genres'],
+    validate_missing_metadata=[],
 )
-docs = notion.load(query_dict={})
+docs = notion.load(query_dict={}, is_test_only=True)
